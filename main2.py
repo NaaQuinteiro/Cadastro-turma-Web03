@@ -114,6 +114,7 @@ class MyHandler(SimpleHTTPRequestHandler):
 
             super().do_GET()
 
+
     def usuario_existente(self, login, senha):
         cursor = conexao.cursor()
         cursor.execute("SELECT senha FROM dados_login WHERE login = %s", (login,))
@@ -126,27 +127,30 @@ class MyHandler(SimpleHTTPRequestHandler):
        
         return False
     
-    def turma_existente(self, cod_turma, descricao):
+    
+    def turma_existente(self, descricao):
         # Vericação se a turma já existe 
-        with open('dados_turma.txt', 'r', encoding='utf-8') as file:
-            for line in file:
-                if line.strip():
-                    stored_cod, stored_descricao = line.strip().split(";")
+        cursor = conexao.cursor()
+        cursor.execute('SELECT descricao FROM turmas WHERE descricao = %s', (descricao,))
+        resultado = cursor.fetchone()
+        cursor.close()
 
-                    if cod_turma == stored_cod or descricao == stored_descricao:
-                        return True
+        if resultado:
+            return True
         return False
     
-    def atividade_existente(self, cod_atividade, descricao):
-        # Vericação se a turma já existe 
-        with open('dados_atividade.txt', 'r', encoding='utf-8') as file:
-            for line in file:
-                if line.strip():
-                    stored_cod, stored_descricao = line.strip().split(";")
 
-                    if cod_atividade == stored_cod or descricao == stored_descricao:
-                        return True
+    def atividade_existente(self, descricao):
+        # Vericação se a turma já existe 
+        cursor = conexao.cursor()
+        cursor.execute('SELECT descricao FROM atividades WHERE descricao = %s', (descricao,))
+        resultado = cursor.fetchone()
+        cursor.close()
+
+        if resultado:
+            return True
         return False
+    
     
     def adicionar_usuario(self, login, senha, nome):
         cursor = conexao.cursor()
@@ -157,13 +161,21 @@ class MyHandler(SimpleHTTPRequestHandler):
         conexao.commit()
         cursor.close()
 
-    def adicionar_turma(self, cod_turma, descricao):
-        with open('dados_turma.txt', 'a', encoding='utf-8') as file:
-            file.write(f'{cod_turma};{descricao}\n')
+    def adicionar_turma(self, descricao):
+        cursor = conexao.cursor()
+        cursor.execute("INSERT INTO turmas(descricao) VALUES (%s)", (descricao,))
 
-    def adicionar_atividade(self, cod_atividade, descricao):
-        with open('dados_atividade.txt', 'a', encoding='utf-8') as file:
-            file.write(f'{cod_atividade};{descricao}\n')
+        conexao.commit()
+        cursor.close()
+
+
+    def adicionar_atividade(self, descricao):
+        cursor = conexao.cursor()
+        cursor.execute("INSERT INTO atividades(descricao) VALUES (%s)", (descricao,))
+
+        conexao.commit()
+        cursor.close()
+
     
     def remover_ultima_linha(self, arquivo):
         print('Vou excluir a última linha')
@@ -228,29 +240,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             self.send_header('Location', '/page_professor.html')
             # self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
-            # if self.usuario_existente(login, senha):
-            #     with open ('dados.login.txt', 'r', encoding='utf-8') as file:
-            #         lines = file.readlines()
-                
-            #     with open ('dados.login.txt', 'w', encoding='utf-8') as file:
-            #         for line in lines:
-            #             stored_login, stored_senha, stored_nome = line.strip().split(';')
-            #             if login == stored_login and senha_hash == stored_senha:
-            #                 line = f'{login};{senha_hash};{nome}\n'
-            #             file.write(line)
 
-            #     self.send_response(302)
-            #     self.send_header('Location', '/page_professor.html')
-            #     # self.send_header('Content-type', 'text/html; charset=utf-8')
-            #     self.end_headers()
-            
-            # else:
-            #     self.remover_ultima_linha('dados.login.txt')
-            #     self.send_response(302)
-            #     self.send_header('Content-type', 'text/html; charset=utf-8')
-            #     self.end_headers()
-            #     self.wfile.write('A senha não confere. Retome o procedimento!'.encode('utf-8'))
-            
         elif self.path.startswith('/cadastrar_turma'):
             content_length =  int(self.headers['content-length'])
 
@@ -258,11 +248,11 @@ class MyHandler(SimpleHTTPRequestHandler):
 
             from_data = parse_qs(body, keep_blank_values=True)
 
-            cod_turma = from_data.get('codigo-turma', [''])[0]
+            # cod_turma = from_data.get('codigo-turma', [''])[0]
             descricao = from_data.get('descricao', [''])[0]
 
-            if cod_turma.strip()== '' or descricao.strip() == '':
-                
+            # if cod_turma.strip()== '' or descricao.strip() == '':
+            if descricao.strip() == '':
                 mensagem_erro = "Os campos não foram preenchidos corretamente, tente novamente."
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
@@ -272,20 +262,13 @@ class MyHandler(SimpleHTTPRequestHandler):
                 with open('cadastro_turma.html', 'r', encoding='utf-8') as file:
                     content = file.read()
 
-                # Substituir o marcador pela mensagem de erro
+                # Substituir o marcador pela mensagem de erro   
                 content = content.replace('<!--Mensagem de erro inserida aqui-->', f'<div class="error-message">{mensagem_erro}</div>')
 
                 # Enviar a resposta com o conteúdo modificado
                 self.wfile.write(content.encode('utf-8'))
             
-            elif self.turma_existente(cod_turma, descricao) == True:
-                # self.send_response(302)  
-                # self.send_header("Location", "/cadastro_turma_failed")
-                # self.end_headers
-                # self.send_response(302)
-                # self.send_header("Content-type", "text/html; charset=utf-8")
-                # self.end_headers()
-                # self.wfile.write("Turma já cadastrada, tente novamente com outros dados.".encode('utf-8'))
+            elif self.turma_existente(descricao) == True:
                 
                 mensagem_erro = "Turma já cadastrada, tente novamente com outros dados."
                 self.send_response(200)
@@ -304,11 +287,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             
             else:
                 # Se os campos estiverem preenchidos, adiciona a turma
-                self.adicionar_turma(cod_turma, descricao)
-
-                # self.send_response(302)
-                # self.send_header("Location", "/cadastrar_turma")
-                # self.end_headers()
+                self.adicionar_turma(descricao)
 
                 mensagem_erro = "Turma cadastrada com sucesso!"
                 self.send_response(200)
@@ -332,19 +311,11 @@ class MyHandler(SimpleHTTPRequestHandler):
 
             from_data = parse_qs(body, keep_blank_values=True)
 
-            cod_atividade= from_data.get('codigo-atividade', [''])[0]
+            # cod_atividade= from_data.get('codigo-atividade', [''])[0]
             descricao = from_data.get('descricao', [''])[0]
 
-            if cod_atividade.strip()== '' or descricao.strip() == '':
-                
-                # self.send_response(302)
-                # self.send_header('Location', '/cadastro_turma_failed')
-                # self.end_headers()
-                # self.send_response(302)
-                # self.send_header("Content-type", "text/html; charset=utf-8")
-                # self.end_headers()
-                # self.wfile.write("Os campos não foram preenchidos corretamente, tente novamente.".encode('utf-8'))
-
+            # if cod_atividade.strip()== '' or descricao.strip() == '':
+            if descricao.strip() == '':
                 mensagem_erro = "Os campos não foram preenchidos corretamente, tente novamente!"
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
@@ -360,17 +331,7 @@ class MyHandler(SimpleHTTPRequestHandler):
                 # Enviar a resposta com o conteúdo modificado
                 self.wfile.write(content.encode('utf-8'))
 
-                
-
-            
-            elif self.atividade_existente(cod_atividade, descricao) == True:
-                # self.send_response(302)  
-                # self.send_header("Location", "/cadastro_turma_failed")
-                # self.end_headers
-                # self.send_response(302)
-                # self.send_header("Content-type", "text/html; charset=utf-8")
-                # self.end_headers()
-                # self.wfile.write("Atividade já cadastrada, tente novamente com outros dados.".encode('utf-8'))
+            elif self.atividade_existente(descricao) == True:
                 mensagem_erro = "Atividade já cadastrada, tente novamente com outros dados."
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
@@ -388,12 +349,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             
             else:
                 # Se os campos estiverem preenchidos, adiciona a turma
-                self.adicionar_atividade(cod_atividade, descricao)
-
-                # self.send_response(302)
-                # self.send_header("Location", "/cadastrar_atividade")
-                # self.end_headers()
-
+                self.adicionar_atividade(descricao)
                 
                 mensagem_erro = "Atividade cadastrada com sucesso!"
                 self.send_response(200)
