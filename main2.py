@@ -198,12 +198,11 @@ class MyHandler(SimpleHTTPRequestHandler):
             senha = form_data.get('senha',[''])[0]
 
             if self.usuario_existente(login, senha):
-
-                self.send_response(200)
-                self.send_header("Content-type", "text/html; charset=utf-8")
+                
+                self.send_response(302)
+                self.send_header('Location', '/page_professor.html')
+                # self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
-                mensagem = f"Usuário {login} logado com sucesso!!" 
-                self.wfile.write(mensagem.encode('utf-8'))
             
             else:
                 # verifica se o usuario já esta cadastrado. Caso não esteja foi caso de login errado
